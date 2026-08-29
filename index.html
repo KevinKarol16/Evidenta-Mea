@@ -65,6 +65,7 @@
     }
 
     function getEarliestExpiry(item) {
+      if (item.isVaultNote) return 99999;
       const dates = [];
       if (item.warrantyExpiry) dates.push(daysUntil(item.warrantyExpiry));
       if (item.category === "car") {
@@ -225,6 +226,11 @@
       const [vaultItems, setVaultItems] = useState([]);
       const [selectedVaultId, setSelectedVaultId] = useState(null);
 
+      // Formular pentru notiță simplă în seif
+      const [showVaultNoteForm, setShowVaultNoteForm] = useState(false);
+      const [vaultNoteTitle, setVaultNoteTitle] = useState("");
+      const [vaultNoteText, setVaultNoteText] = useState("");
+
       // Stări pentru schimbarea parolei din interior
       const [showChangePass, setShowChangePass] = useState(false);
       const [newPassInput, setNewPassInput] = useState("");
@@ -254,6 +260,8 @@
         setShowChangePass(false);
         setNewPassInput("");
         setChangePassMsg("");
+        setShowVaultNoteForm(false);
+        setSelectedVaultId(null);
 
         if (!savedPass) {
           setVaultPassword("");
@@ -315,9 +323,8 @@
         }
       }
 
-      // Funcție pentru resetare totală (șterge PIN-ul și tot ce e în seif)
       function handleHardResetVault() {
-        const confirmed = window.confirm("Ești sigur că vrei să resetezi seiful? Vei pierde parola veche și TOATE obiectele ascunse din interior!");
+        const confirmed = window.confirm("Ești sigur că vrei să resetezi seiful? Vei pierde parola veche și TOATE obiectele și notițele ascunse!");
         if (confirmed) {
           localStorage.removeItem("garage-vault-pass");
           localStorage.removeItem("garage-vault-data");
@@ -328,6 +335,29 @@
           setVaultOpen(false);
           alert("Seiful a fost resetat complet!");
         }
+      }
+
+      function addVaultNote(e) {
+        e.preventDefault();
+        if (!vaultNoteTitle.trim() && !vaultNoteText.trim()) return;
+        const newNote = {
+          id: uid(),
+          isVaultNote: true,
+          name: vaultNoteTitle.trim() || "Notiță secretă",
+          notes: vaultNoteText.trim(),
+          dateAdded: new Date().toISOString().slice(0, 10),
+        };
+        const updated = [newNote, ...vaultItems];
+        persistVault(updated);
+        setVaultNoteTitle("");
+        setVaultNoteText("");
+        setShowVaultNoteForm(false);
+      }
+
+      function deleteVaultItem(id) {
+        const updated = vaultItems.filter((it) => it.id !== id);
+        persistVault(updated);
+        setSelectedVaultId(null);
       }
 
       function handleChangePassword(e) {
@@ -363,6 +393,7 @@
       }
 
       function moveFromVault(item) {
+        if (item.isVaultNote) return; // Notițele simple nu se mută în lista publică
         const updatedVault = vaultItems.filter((it) => it.id !== item.id);
         persistVault(updatedVault);
         setSelectedVaultId(null);
@@ -1131,7 +1162,6 @@
                       🔓 Deblochează Seiful
                     </button>
 
-                    {/* Buton de Resetare Totală (dacă s-a uitat PIN-ul) */}
                     {localStorage.getItem("garage-vault-pass") && (
                       <button
                         type="button"
@@ -1149,14 +1179,53 @@
                       <p style={{ fontSize: 12, color: GOOD, fontWeight: 600 }}>
                         ✅ Seif deblocat ({vaultItems.length} {vaultItems.length === 1 ? "element" : "elemente"})
                       </p>
-                      <button
-                        onClick={() => { setShowChangePass(!showChangePass); setChangePassMsg(""); }}
-                        className="px-2.5 py-1 rounded-lg"
-                        style={{ background: inputBg, color: textColor, fontSize: 12, fontWeight: 600 }}
-                      >
-                        🔑 {showChangePass ? "Anulează" : "Schimbă PIN"}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setShowVaultNoteForm(!showVaultNoteForm); setSelectedVaultId(null); }}
+                          className="px-2.5 py-1 rounded-lg"
+                          style={{ background: "rgba(0,122,255,0.15)", color: BLUE, fontSize: 12, fontWeight: 600 }}
+                        >
+                          ➕ {showVaultNoteForm ? "Anulează" : "Notiță nouă"}
+                        </button>
+                        <button
+                          onClick={() => { setShowChangePass(!showChangePass); setChangePassMsg(""); }}
+                          className="px-2.5 py-1 rounded-lg"
+                          style={{ background: inputBg, color: textColor, fontSize: 12, fontWeight: 600 }}
+                        >
+                          🔑 {showChangePass ? "Anulează" : "Schimbă PIN"}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Formular adăugare notiță simplă direct în seif */}
+                    {showVaultNoteForm && (
+                      <form onSubmit={addVaultNote} className="p-3 rounded-2xl flex flex-col gap-2" style={{ background: boxBg, border: cardBorder }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: BLUE }}>📝 Adaugă notiță secretă nouă:</p>
+                        <input
+                          type="text"
+                          value={vaultNoteTitle}
+                          onChange={(e) => setVaultNoteTitle(e.target.value)}
+                          placeholder="Titlu (ex: Parole Wi-Fi, Cod seif casă...)"
+                          className="w-full rounded-xl px-3 py-2"
+                          style={{ background: inputBg, color: textColor, fontSize: 13, border: "none" }}
+                        />
+                        <textarea
+                          value={vaultNoteText}
+                          onChange={(e) => setVaultNoteText(e.target.value)}
+                          placeholder="Conținutul secret..."
+                          rows={3}
+                          className="w-full rounded-xl px-3 py-2"
+                          style={{ background: inputBg, color: textColor, fontSize: 13, border: "none" }}
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-xl py-2 font-semibold"
+                          style={{ background: BLUE, color: "#fff", fontSize: 13 }}
+                        >
+                          💾 Salvează în seif
+                        </button>
+                      </form>
+                    )}
 
                     {/* Panou schimbare parolă din interior */}
                     {showChangePass && (
@@ -1188,13 +1257,14 @@
                     {vaultItems.length === 0 ? (
                       <div className="text-center py-10">
                         <p style={{ fontSize: 32 }}>📭</p>
-                        <p style={{ fontSize: 14, color: subColor, marginTop: 4 }}>Seiful este gol momentan. Poți ascunde orice obiect din meniul său de detalii.</p>
+                        <p style={{ fontSize: 14, color: subColor, marginTop: 4 }}>Seiful este gol momentan. Poți adăuga notițe simple sau ascunde obiecte din listă.</p>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2.5">
                         {vaultItems.map((it) => {
-                          const meta = CAT[it.category];
-                          const displayEmoji = it.customEmoji || meta.emoji;
+                          const isNote = it.isVaultNote;
+                          const meta = !isNote ? CAT[it.category] : null;
+                          const displayEmoji = isNote ? "📝" : (it.customEmoji || meta.emoji);
                           return (
                             <div
                               key={it.id}
@@ -1202,32 +1272,41 @@
                               className="rounded-2xl p-3.5 cursor-pointer flex items-center justify-between"
                               style={{ background: boxBg, border: cardBorder }}
                             >
-                              <div className="flex items-center gap-3">
-                                <div className="rounded-xl flex items-center justify-center" style={{ width: 40, height: 40, background: `${meta.accent}25`, fontSize: 22 }}>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ width: 40, height: 40, background: isNote ? "rgba(0,122,255,0.15)" : `${meta.accent}25`, fontSize: 20 }}>
                                   {displayEmoji}
                                 </div>
-                                <div>
-                                  <p style={{ color: textColor, fontSize: 15, fontWeight: 600 }}>{it.name}</p>
-                                  <p style={{ color: subColor, fontSize: 12 }}>{[it.brand, it.model].filter(Boolean).join(" · ") || "ascuns"}</p>
+                                <div className="min-w-0">
+                                  <p className="truncate" style={{ color: textColor, fontSize: 15, fontWeight: 600 }}>{it.name}</p>
+                                  <p className="truncate" style={{ color: subColor, fontSize: 12 }}>{isNote ? "Notiță secretă" : ([it.brand, it.model].filter(Boolean).join(" · ") || "ascuns")}</p>
                                 </div>
                               </div>
-                              <span style={{ fontSize: 14, color: BLUE, fontWeight: 600 }}>Scoate 🔓</span>
+                              <span style={{ fontSize: 13, color: BLUE, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>Vezi ❯</span>
                             </div>
                           );
                         })}
                       </div>
                     )}
 
-                    {/* Detaliu element din seif */}
+                    {/* Detaliu element / notiță din seif */}
                     {selectedVault && (
-                      <div className="mt-4 p-4 rounded-2xl border" style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)", borderColor: cardBorder }}>
-                        <div className="flex items-center justify-between mb-2">
+                      <div className="mt-2 p-4 rounded-2xl border flex flex-col gap-3" style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)", borderColor: cardBorder }}>
+                        <div className="flex items-center justify-between">
                           <h3 style={{ fontSize: 16, fontWeight: 700, color: textColor }}>{selectedVault.name}</h3>
-                          <button onClick={() => moveFromVault(selectedVault)} className="px-3 py-1.5 rounded-lg" style={{ background: BLUE, color: "#fff", fontSize: 12, fontWeight: 600 }}>
-                            🔓 Scoate înapoi în listă
-                          </button>
+                          <div className="flex gap-2">
+                            {!selectedVault.isVaultNote && (
+                              <button onClick={() => moveFromVault(selectedVault)} className="px-2.5 py-1.5 rounded-lg" style={{ background: BLUE, color: "#fff", fontSize: 11, fontWeight: 600 }}>
+                                🔓 Scoate în listă
+                              </button>
+                            )}
+                            <button onClick={() => deleteVaultItem(selectedVault.id)} className="px-2.5 py-1.5 rounded-lg" style={{ background: "rgba(255,59,48,0.15)", color: DANGER, fontSize: 11, fontWeight: 600 }}>
+                              🗑️ Șterge
+                            </button>
+                          </div>
                         </div>
-                        <p style={{ fontSize: 13, color: subColor }}>{selectedVault.notes ? `Note: ${selectedVault.notes}` : "Nicio notă suplimentară."}</p>
+                        <p style={{ fontSize: 13, color: textColor, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                          {selectedVault.notes ? selectedVault.notes : "Nicio notă suplimentară."}
+                        </p>
                       </div>
                     )}
                   </div>
