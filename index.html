@@ -187,14 +187,13 @@
           const shouldBeDark = savedTheme === "dark";
           setIsDark(shouldBeDark);
 
-          // Actualizează bara Dynamic Island la încărcare
           const meta = document.getElementById("theme-color-meta");
           if (meta) {
             meta.setAttribute("content", shouldBeDark ? "#12141C" : "#E7F1FF");
           }
         } catch (e) {
           console.error(e);
-        } fontally {
+        } finally {
           setLoading(false);
         }
       }, []);
@@ -204,7 +203,6 @@
         setIsDark(nextState);
         localStorage.setItem("garage-theme", nextState ? "dark" : "light");
 
-        // Schimbă culoarea zonei de sus la apăsare
         const meta = document.getElementById("theme-color-meta");
         if (meta) {
           meta.setAttribute("content", nextState ? "#12141C" : "#E7F1FF");
@@ -292,7 +290,6 @@
       const filtered = items.filter((it) => tab === "all" || it.category === tab);
       const selected = items.find((it) => it.id === selectedId);
 
-      // Stiluri dinamice de temă
       const bgGrad = isDark 
         ? "linear-gradient(160deg, #12141C 0%, #1A1D27 45%, #0F1015 100%)"
         : "linear-gradient(160deg, #E7F1FF 0%, #F3F7FC 45%, #ECEFF6 100%)";
@@ -337,7 +334,6 @@
                 </h1>
               </div>
               
-              {/* Buton Schimbare Temă */}
               <button
                 onClick={toggleTheme}
                 className="rounded-full flex items-center justify-center transition-transform active:scale-95"
