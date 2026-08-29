@@ -5,19 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Garaj &amp; Casă</title>
   
-  <!-- Culoare bara de stare iOS (Dynamic Island) -->
   <meta id="theme-color-meta" name="theme-color" content="#E7F1FF" />
 
-  <!-- Icon PNG HD Nativ iOS -->
   <link rel="apple-touch-icon" sizes="180x180" href="https://img.icons8.com/color/512/garage--v1.png?v=2" />
   <link rel="icon" type="image/png" href="https://img.icons8.com/color/512/garage--v1.png?v=2" />
   
-  <!-- Setări iOS App -->
   <meta name="apple-mobile-web-app-title" content="Garaj&amp;Casă" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-  <!-- Tailwind CSS & React CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -27,7 +23,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
     const BLUE = "#007AFF";
     const CYAN = "#32ADE6";
@@ -118,6 +114,30 @@
       return `✅ mai ai ${days} zile până expiră`;
     }
 
+    // Funcții simple de criptare bazate pe Base64 + Codificare pentru Seif
+    function encryptData(text, password) {
+      try {
+        const str = JSON.stringify(text);
+        const combined = password + ":::" + str;
+        return btoa(encodeURIComponent(combined));
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function decryptData(cipher, password) {
+      try {
+        const decoded = decodeURIComponent(atob(cipher));
+        const parts = decoded.split(":::");
+        if (parts.length < 2) return null;
+        const pass = parts[0];
+        if (pass !== password) return null; // parolă greșită
+        return JSON.parse(parts.slice(1).join(":::"));
+      } catch (e) {
+        return null;
+      }
+    }
+
     function Pill({ label, days }) {
       if (days === null) return null;
       const color = statusColor(days);
@@ -187,7 +207,7 @@
       const [loading, setLoading] = useState(true);
       const [saveError, setSaveError] = useState(null);
       const [tab, setTab] = useState("all");
-      const [sortBy, setSortBy] = useState("manual"); // 'manual', 'expiry', 'name'
+      const [sortBy, setSortBy] = useState("manual");
       const [showForm, setShowForm] = useState(false);
       const [editingId, setEditingId] = useState(null);
       const [formData, setFormData] = useState(emptyForm);
@@ -196,6 +216,121 @@
       const [serviceDesc, setServiceDesc] = useState("");
       const [kmDraft, setKmDraft] = useState("");
       const [isDark, setIsDark] = useState(false);
+
+      // Stări pentru Seif Secret Criptat
+      const [vaultOpen, setVaultOpen] = useState(false);
+      const [vaultUnlocked, setVaultUnlocked] = useState(false);
+      const [vaultPassword, setVaultPassword] = useState("");
+      const [vaultPinInput, setVaultPinInput] = useState("");
+      const [vaultError, setVaultError] = useState("");
+      const [vaultItems, setVaultItems] = useState([]);
+      const [selectedVaultId, setSelectedVaultId] = useState(null);
+
+      // Gest triplu tap pe titlu
+      const titleClicksRef = useRef(0);
+      const titleTimerRef = useRef(null);
+
+      function handleTitleTap() {
+        titleClicksRef.current += 1;
+        if (titleClicksRef.current === 1) {
+          titleTimerRef.current = setTimeout(() => {
+            titleClicksRef.current = 0;
+          }, 600);
+        }
+        if (titleClicksRef.current >= 3) {
+          clearTimeout(titleTimerRef.current);
+          titleClicksRef.current = 0;
+          openVaultModal();
+        }
+      }
+
+      function openVaultModal() {
+        const savedPass = localStorage.getItem("garage-vault-pass");
+        setVaultPinInput("");
+        setVaultError("");
+        if (!savedPass) {
+          setVaultPassword(""); // Trebuie să seteze o parolă nouă
+        } else {
+          setVaultPassword(savedPass);
+        }
+        setVaultOpen(true);
+      }
+
+      function unlockVault(e) {
+        e.preventDefault();
+        const savedPass = localStorage.getItem("garage-vault-pass");
+        
+        if (!savedPass) {
+          // Setare parolă nouă
+          if (vaultPinInput.trim().length < 4) {
+            setVaultError("Parola trebuie să aibă minim 4 caractere.");
+            return;
+          }
+          localStorage.setItem("garage-vault-pass", vaultPinInput.trim());
+          setVaultPassword(vaultPinInput.trim());
+          setVaultUnlocked(true);
+          loadVaultContent(vaultPinInput.trim());
+        } else {
+          // Verificare parolă existentă
+          const cipher = localStorage.getItem("garage-vault-data");
+          if (!cipher) {
+            if (vaultPinInput.trim() === savedPass) {
+              setVaultUnlocked(true);
+              setVaultItems([]);
+            } else {
+              setVaultError("Parolă incorectă.");
+            }
+          } else {
+            const decrypted = decryptData(cipher, vaultPinInput.trim());
+            if (decrypted !== null) {
+              setVaultUnlocked(true);
+              setVaultItems(decrypted);
+            } else {
+              setVaultError("Parolă incorectă sau date corupte.");
+            }
+          }
+        }
+      }
+
+      function loadVaultContent(pass) {
+        const cipher = localStorage.getItem("garage-vault-data");
+        if (!cipher) {
+          setVaultItems([]);
+          return;
+        }
+        const decrypted = decryptData(cipher, pass);
+        setVaultItems(decrypted || []);
+      }
+
+      function persistVault(newVaultItems) {
+        setVaultItems(newVaultItems);
+        const cipher = encryptData(newVaultItems, vaultPassword);
+        if (cipher) {
+          localStorage.setItem("garage-vault-data", cipher);
+        }
+      }
+
+      function moveToVault(item) {
+        // Scoate din lista normală
+        const updatedNormal = items.filter((it) => it.id !== item.id);
+        persist(updatedNormal);
+        setSelectedId(null);
+
+        // Adaugă în seif
+        const updatedVault = [item, ...vaultItems];
+        persistVault(updatedVault);
+      }
+
+      function moveFromVault(item) {
+        // Scoate din seif
+        const updatedVault = vaultItems.filter((it) => it.id !== item.id);
+        persistVault(updatedVault);
+        setSelectedVaultId(null);
+
+        // Adaugă în lista normală
+        const updatedNormal = [item, ...items];
+        persist(updatedNormal);
+      }
 
       useEffect(() => {
         try {
@@ -322,10 +457,8 @@
         persist(updated);
       }
 
-      // Filtrare
       let filtered = items.filter((it) => tab === "all" || it.category === tab);
 
-      // Sortare
       if (sortBy === "expiry") {
         filtered = [...filtered].sort((a, b) => getEarliestExpiry(a) - getEarliestExpiry(b));
       } else if (sortBy === "name") {
@@ -333,6 +466,7 @@
       }
 
       const selected = items.find((it) => it.id === selectedId);
+      const selectedVault = vaultItems.find((it) => it.id === selectedVaultId);
 
       const bgGrad = isDark 
         ? "linear-gradient(160deg, #12141C 0%, #1A1D27 45%, #0F1015 100%)"
@@ -373,7 +507,13 @@
                 <p style={{ color: BLUE, fontSize: 11, fontWeight: 600, letterSpacing: "0.06em" }}>
                   📋 REGISTRU PERSONAL <span style={{ color: CYAN, fontWeight: 500, marginLeft: 4 }}>by kev</span>
                 </p>
-                <h1 style={{ color: textColor, fontSize: 26, fontWeight: 700, marginTop: 2, letterSpacing: "-0.02em" }}>
+                {/* Zonă cu click triplu ascuns pentru Seif */}
+                <h1
+                  onClick={handleTitleTap}
+                  className="cursor-pointer select-none"
+                  style={{ color: textColor, fontSize: 26, fontWeight: 700, marginTop: 2, letterSpacing: "-0.02em" }}
+                  title="Apasă de 3 ori repede pentru seif"
+                >
                   🚗 Garaj &amp; Casă 🏠
                 </h1>
               </div>
@@ -584,7 +724,6 @@
                 <form onSubmit={submitForm} className="flex flex-col gap-3">
                   <SectionLabel text="🎨 Pictogramă &amp; Nume" />
                   
-                  {/* Selector Emoji */}
                   <div>
                     <label style={{ fontSize: 12, color: subColor }}>Alege sau scrie un Emoji custom:</label>
                     <div className="flex items-center gap-2 mt-1">
@@ -703,7 +842,6 @@
                     </button>
                     
                     <div className="flex items-center gap-3">
-                      {/* Butoane Reordonare Sus/Jos */}
                       <div className="flex items-center gap-1 bg-black/10 rounded-lg p-0.5">
                         <button
                           disabled={selectedIndex <= 0}
@@ -725,6 +863,9 @@
                         </button>
                       </div>
 
+                      <button onClick={() => moveToVault(selected)} title="Ascunde în Seif">
+                        <span style={{ fontSize: 18 }}>🔏</span>
+                      </button>
                       <button onClick={() => openEditForm(selected)}>
                         <span style={{ fontSize: 18 }}>✏️</span>
                       </button>
@@ -902,6 +1043,112 @@
               </div>
             );
           })()}
+
+          {/* Modal SEIF SECRET CRIPTAT */}
+          {vaultOpen && (
+            <div className="fixed inset-0 flex flex-col justify-end z-40" style={{ background: "rgba(0,0,0,0.6)" }}>
+              <div
+                className="rounded-t-3xl px-5 pt-5 pb-8 flex flex-col gap-4"
+                style={{
+                  background: modalBg,
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
+                  maxHeight: "92vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: 20 }}>🔐</span>
+                    <h2 style={{ fontSize: 19, fontWeight: 700, color: textColor }}>Seif Secret Criptat</h2>
+                  </div>
+                  <button onClick={() => { setVaultOpen(false); setVaultUnlocked(false); }}>
+                    <span style={{ fontSize: 20, color: subColor }}>❌</span>
+                  </button>
+                </div>
+
+                {!vaultUnlocked ? (
+                  <form onSubmit={unlockVault} className="flex flex-col gap-3 py-6">
+                    <p style={{ fontSize: 13, color: subColor, textAlign: "center" }}>
+                      {!localStorage.getItem("garage-vault-pass")
+                        ? "Creează o parolă PIN pentru a securiza seiful tău privat:"
+                        : "Introdu parola PIN pentru a debloca seiful:"}
+                    </p>
+                    <input
+                      type="password"
+                      value={vaultPinInput}
+                      onChange={(e) => setVaultPinInput(e.target.value)}
+                      placeholder="🔑 Parolă PIN"
+                      className="rounded-xl px-4 py-3 text-center"
+                      style={{ background: inputBg, color: textColor, fontSize: 18, border: "none", letterSpacing: "0.1em" }}
+                    />
+                    {vaultError && (
+                      <p style={{ fontSize: 12, color: DANGER, textAlign: "center", fontWeight: 600 }}>{vaultError}</p>
+                    )}
+                    <button
+                      type="submit"
+                      className="rounded-xl py-3 font-semibold transition-all active:scale-95 mt-2"
+                      style={{ background: BLUE, color: "#fff", fontSize: 15 }}
+                    >
+                      🔓 Deblochează Seiful
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <p style={{ fontSize: 12, color: GOOD, fontWeight: 600 }}>
+                      ✅ Seif deblocat cu succes ({vaultItems.length} {vaultItems.length === 1 ? "element ascuns" : "elemente ascunse"})
+                    </p>
+
+                    {vaultItems.length === 0 ? (
+                      <div className="text-center py-10">
+                        <p style={{ fontSize: 32 }}>📭</p>
+                        <p style={{ fontSize: 14, color: subColor, marginTop: 4 }}>Seiful este gol momentan. Poți ascunde orice obiect din meniul său de detalii.</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2.5">
+                        {vaultItems.map((it) => {
+                          const meta = CAT[it.category];
+                          const displayEmoji = it.customEmoji || meta.emoji;
+                          return (
+                            <div
+                              key={it.id}
+                              onClick={() => setSelectedVaultId(it.id)}
+                              className="rounded-2xl p-3.5 cursor-pointer flex items-center justify-between"
+                              style={{ background: boxBg, border: cardBorder }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="rounded-xl flex items-center justify-center" style={{ width: 40, height: 40, background: `${meta.accent}25`, fontSize: 22 }}>
+                                  {displayEmoji}
+                                </div>
+                                <div>
+                                  <p style={{ color: textColor, fontSize: 15, fontWeight: 600 }}>{it.name}</p>
+                                  <p style={{ color: subColor, fontSize: 12 }}>{[it.brand, it.model].filter(Boolean).join(" · ") || "ascuns"}</p>
+                                </div>
+                              </div>
+                              <span style={{ fontSize: 14, color: BLUE, fontWeight: 600 }}>Scoate 🔓</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Detaliu element din seif */}
+                    {selectedVault && (
+                      <div className="mt-4 p-4 rounded-2xl border" style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)", borderColor: cardBorder }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: textColor }}>{selectedVault.name}</h3>
+                          <button onClick={() => moveFromVault(selectedVault)} className="px-3 py-1.5 rounded-lg" style={{ background: BLUE, color: "#fff", fontSize: 12, fontWeight: 600 }}>
+                            🔓 Scoate înapoi în listă
+                          </button>
+                        </div>
+                        <p style={{ fontSize: 13, color: subColor }}>{selectedVault.notes ? `Note: ${selectedVault.notes}` : "Nicio notă suplimentară."}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       );
     }
