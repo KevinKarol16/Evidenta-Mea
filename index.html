@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Garaj &amp; Casă</title>
   
-  <!-- Icon PNG special formatat pentru iOS -->
-  <link rel="apple-touch-icon" sizes="180x180" href="https://img.icons8.com/color/180/garage.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/color/32/garage.png" />
+  <!-- Icon HD Premium pentru iOS -->
+  <link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=300&auto=format&fit=crop&q=80" />
+  <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=300&auto=format&fit=crop&q=80" />
   
-  <!-- Setări ecran principal iOS -->
+  <!-- Setări iOS -->
   <meta name="apple-mobile-web-app-title" content="Garaj&amp;Casă" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <!-- Tailwind CSS & React CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,7 +20,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body class="bg-[#ECEFF6] m-0 p-0">
+<body class="m-0 p-0">
   <div id="root"></div>
 
   <script type="text/babel">
@@ -28,10 +28,6 @@
 
     const BLUE = "#007AFF";
     const CYAN = "#32ADE6";
-    const INDIGO = "#5E5CE6";
-    const INK = "#1C1C1E";
-    const SUB = "#6E6E73";
-    const FAINT = "#8E8E93";
     const GOOD = "#34C759";
     const WARN = "#FF9500";
     const DANGER = "#FF3B30";
@@ -86,7 +82,7 @@
     }
 
     function statusColor(days) {
-      if (days === null) return FAINT;
+      if (days === null) return "#8E8E93";
       if (days < 0) return DANGER;
       if (days <= 30) return WARN;
       return GOOD;
@@ -114,11 +110,14 @@
       );
     }
 
-    function ExpiryRow({ emoji, label, date, extra }) {
+    function ExpiryRow({ emoji, label, date, extra, isDark }) {
       const days = daysUntil(date);
       const color = statusColor(days);
+      const textColor = isDark ? "#F2F2F7" : "#1C1C1E";
+      const subColor = isDark ? "#A1A1A6" : "#6E6E73";
+
       return (
-        <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: "1px solid rgba(60,60,67,0.08)" }}>
+        <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(60,60,67,0.08)"}` }}>
           <div
             className="rounded-full flex items-center justify-center flex-shrink-0"
             style={{ width: 32, height: 32, background: `${color}1A`, fontSize: 14 }}
@@ -126,8 +125,8 @@
             {emoji}
           </div>
           <div className="flex-1 min-w-0" style={{ paddingRight: 8 }}>
-            <p style={{ fontSize: 14, color: INK, fontWeight: 500 }}>{label}</p>
-            <p style={{ fontSize: 12, color: SUB, marginTop: 1 }}>
+            <p style={{ fontSize: 14, color: textColor, fontWeight: 500 }}>{label}</p>
+            <p style={{ fontSize: 12, color: subColor, marginTop: 1 }}>
               {formatDate(date)}{extra ? ` · ${extra}` : ""}
             </p>
           </div>
@@ -172,6 +171,7 @@
       const [serviceDate, setServiceDate] = useState("");
       const [serviceDesc, setServiceDesc] = useState("");
       const [kmDraft, setKmDraft] = useState("");
+      const [isDark, setIsDark] = useState(false);
 
       useEffect(() => {
         try {
@@ -180,12 +180,22 @@
             const parsed = JSON.parse(res);
             setItems(parsed.items || []);
           }
+          const savedTheme = localStorage.getItem("garage-theme");
+          if (savedTheme === "dark") {
+            setIsDark(true);
+          }
         } catch (e) {
           console.error(e);
         } finally {
           setLoading(false);
         }
       }, []);
+
+      function toggleTheme() {
+        const nextState = !isDark;
+        setIsDark(nextState);
+        localStorage.setItem("garage-theme", nextState ? "dark" : "light");
+      }
 
       function persist(newItems) {
         setItems(newItems);
@@ -268,14 +278,23 @@
       const filtered = items.filter((it) => tab === "all" || it.category === tab);
       const selected = items.find((it) => it.id === selectedId);
 
+      // Theme Dynamic Styles
+      const bgGrad = isDark 
+        ? "linear-gradient(160deg, #12141C 0%, #1A1D27 45%, #0F1015 100%)"
+        : "linear-gradient(160deg, #E7F1FF 0%, #F3F7FC 45%, #ECEFF6 100%)";
+      const headerBg = isDark ? "rgba(26,29,39,0.85)" : "rgba(247,249,252,0.72)";
+      const textColor = isDark ? "#F2F2F7" : "#1C1C1E";
+      const subColor = isDark ? "#A1A1A6" : "#6E6E73";
+      const cardBg = isDark ? "rgba(30, 34, 48, 0.65)" : "rgba(255,255,255,0.62)";
+      const cardBorder = isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.7)";
+      const modalBg = isDark ? "rgba(22, 25, 35, 0.95)" : "rgba(255,255,255,0.92)";
+      const inputBg = isDark ? "rgba(255,255,255,0.08)" : "rgba(118,118,128,0.10)";
+      const boxBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(118,118,128,0.08)";
+
       return (
         <div
-          className="w-full min-h-screen flex flex-col relative"
-          style={{
-            background: "linear-gradient(160deg, #E7F1FF 0%, #F3F7FC 45%, #ECEFF6 100%)",
-            fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif",
-            overflow: "hidden",
-          }}
+          className="w-full min-h-screen flex flex-col relative transition-colors duration-300"
+          style={{ background: bgGrad, fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif" }}
         >
           <style>{`
             * { box-sizing: border-box; }
@@ -288,32 +307,41 @@
           <div
             className="px-5 pt-6 pb-3 sticky top-0 z-10"
             style={{
-              background: "rgba(247,249,252,0.72)",
+              background: headerBg,
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
-              borderBottom: "1px solid rgba(60,60,67,0.08)",
+              borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(60,60,67,0.08)"}`,
             }}
           >
             <div className="flex items-center justify-between">
               <div>
                 <p style={{ color: BLUE, fontSize: 11, fontWeight: 600, letterSpacing: "0.06em" }}>
-                  📋 REGISTRU PERSONAL 📋 <span style={{ color: CYAN, fontWeight: 500, marginLeft: 4 }}>by kev</span>
+                  📋 REGISTRU PERSONAL <span style={{ color: CYAN, fontWeight: 500, marginLeft: 4 }}>by kev</span>
                 </p>
-                <h1 style={{ color: INK, fontSize: 26, fontWeight: 700, marginTop: 2, letterSpacing: "-0.02em" }}>
+                <h1 style={{ color: textColor, fontSize: 26, fontWeight: 700, marginTop: 2, letterSpacing: "-0.02em" }}>
                   🚗 Garaj &amp; Casă 🏠
                 </h1>
               </div>
-              <div
-                className="rounded-full flex items-center justify-center"
-                style={{ width: 40, height: 40, background: "rgba(0,122,255,0.12)", fontSize: 18 }}
+              
+              {/* Theme Switcher Button */}
+              <button
+                onClick={toggleTheme}
+                className="rounded-full flex items-center justify-center transition-transform active:scale-95"
+                style={{
+                  width: 42,
+                  height: 42,
+                  background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,122,255,0.12)",
+                  fontSize: 20,
+                  border: isDark ? "1px solid rgba(255,255,255,0.15)" : "none",
+                }}
               >
-                🛡️
-              </div>
+                {isDark ? "🌙" : "☀️"}
+              </button>
             </div>
 
             <div
               className="flex mt-4 p-1 rounded-full"
-              style={{ background: "rgba(118,118,128,0.12)" }}
+              style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(118,118,128,0.12)" }}
             >
               {[
                 { key: "all", label: "✨ Toate" },
@@ -327,9 +355,9 @@
                   style={{
                     fontSize: 13,
                     fontWeight: 600,
-                    background: tab === t.key ? "rgba(255,255,255,0.95)" : "transparent",
-                    color: tab === t.key ? BLUE : SUB,
-                    boxShadow: tab === t.key ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                    background: tab === t.key ? (isDark ? "#2C3040" : "rgba(255,255,255,0.95)") : "transparent",
+                    color: tab === t.key ? BLUE : subColor,
+                    boxShadow: tab === t.key ? "0 1px 3px rgba(0,0,0,0.2)" : "none",
                   }}
                 >
                   {t.label}
@@ -337,25 +365,22 @@
               ))}
             </div>
           </div>
-          
+
           {/* Content */}
           <div className="flex-1 px-5 pt-4 pb-28 relative z-10" style={{ overflowY: "auto" }}>
             {saveError && (
-              <div
-                className="mb-3 px-3 py-2 rounded-xl text-sm flex items-center gap-2"
-                style={{ background: "rgba(255,59,48,0.12)", color: "#C4281A" }}
-              >
+              <div className="mb-3 px-3 py-2 rounded-xl text-sm flex items-center gap-2" style={{ background: "rgba(255,59,48,0.12)", color: "#FF453A" }}>
                 ⚠️ {saveError}
               </div>
             )}
 
             {loading ? (
-              <p className="text-center mt-16" style={{ color: FAINT, fontSize: 14 }}>⏳ se încarcă...</p>
+              <p className="text-center mt-16" style={{ color: subColor, fontSize: 14 }}>⏳ se încarcă...</p>
             ) : filtered.length === 0 ? (
               <div className="text-center mt-16 px-6">
                 <p style={{ fontSize: 40 }}>📭</p>
-                <p style={{ color: INK, fontSize: 17, fontWeight: 600, marginTop: 8 }}>Niciun element încă</p>
-                <p className="text-sm mt-2" style={{ color: SUB }}>
+                <p style={{ color: textColor, fontSize: 17, fontWeight: 600, marginTop: 8 }}>Niciun element încă</p>
+                <p className="text-sm mt-2" style={{ color: subColor }}>
                   Adaugă o mașină 🚗 sau un electrocasnic 🔌 pentru a urmări termenele și istoricul.
                 </p>
               </div>
@@ -368,31 +393,31 @@
                     <div
                       key={it.id}
                       onClick={() => setSelectedId(it.id)}
-                      className="rounded-2xl p-4 cursor-pointer"
+                      className="rounded-2xl p-4 cursor-pointer transition-all"
                       style={{
-                        background: "rgba(255,255,255,0.62)",
+                        background: cardBg,
                         backdropFilter: "blur(16px)",
                         WebkitBackdropFilter: "blur(16px)",
-                        border: "1px solid rgba(255,255,255,0.7)",
-                        boxShadow: "0 4px 18px rgba(31,41,55,0.06)",
+                        border: cardBorder,
+                        boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
                       }}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className="rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ width: 44, height: 44, background: `${meta.accent}1F`, fontSize: 22 }}
+                          style={{ width: 44, height: 44, background: `${meta.accent}25`, fontSize: 22 }}
                         >
                           {meta.emoji}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="truncate" style={{ color: INK, fontSize: 16, fontWeight: 600 }}>
+                          <p className="truncate" style={{ color: textColor, fontSize: 16, fontWeight: 600 }}>
                             {it.name}
                           </p>
-                          <p className="truncate" style={{ color: SUB, fontSize: 12, marginTop: 1 }}>
+                          <p className="truncate" style={{ color: subColor, fontSize: 12, marginTop: 1 }}>
                             {[it.brand, it.model].filter(Boolean).join(" · ") || "🏷️ fără detalii"}
                           </p>
                         </div>
-                        <span style={{ fontSize: 18, color: FAINT }}>❯</span>
+                        <span style={{ fontSize: 18, color: subColor }}>❯</span>
                       </div>
 
                       <div className="flex flex-wrap mt-3" style={{ gap: "8px" }}>
@@ -417,7 +442,7 @@
           {/* FAB */}
           <button
             onClick={() => openAddForm(tab === "appliance" ? "appliance" : "car")}
-            className="fixed rounded-full flex items-center justify-center z-20"
+            className="fixed rounded-full flex items-center justify-center z-20 transition-transform active:scale-90"
             style={{
               width: 56, height: 56, right: 20, bottom: 28,
               background: BLUE,
@@ -429,11 +454,11 @@
 
           {/* Form Modal */}
           {showForm && (
-            <div className="fixed inset-0 flex flex-col justify-end z-30" style={{ background: "rgba(0,0,0,0.35)" }}>
+            <div className="fixed inset-0 flex flex-col justify-end z-30" style={{ background: "rgba(0,0,0,0.5)" }}>
               <div
                 className="rounded-t-3xl px-5 pt-5 pb-8 flex flex-col gap-3"
                 style={{
-                  background: "rgba(255,255,255,0.92)",
+                  background: modalBg,
                   backdropFilter: "blur(24px)",
                   WebkitBackdropFilter: "blur(24px)",
                   maxHeight: "90vh",
@@ -441,27 +466,26 @@
                 }}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <h2 style={{ fontSize: 19, fontWeight: 700, color: INK }}>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, color: textColor }}>
                     {editingId ? "✏️ Editează" : "➕ Adaugă element"}
                   </h2>
                   <button onClick={() => { setShowForm(false); setEditingId(null); }}>
-                    <span style={{ fontSize: 20 }}>❌</span>
+                    <span style={{ fontSize: 20, color: subColor }}>❌</span>
                   </button>
                 </div>
 
                 {!editingId && (
-                  <div className="flex gap-2 mb-1 p-1 rounded-xl" style={{ background: "rgba(118,118,128,0.12)" }}>
+                  <div className="flex gap-2 mb-1 p-1 rounded-xl" style={{ background: inputBg }}>
                     {Object.entries(CAT).map(([key, meta]) => (
                       <button
                         key={key}
                         onClick={() => setFormData((f) => ({ ...f, category: key }))}
-                        className="flex-1 py-2 rounded-lg"
+                        className="flex-1 py-2 rounded-lg transition-all"
                         style={{
                           fontSize: 13,
                           fontWeight: 600,
-                          background: formData.category === key ? "#fff" : "transparent",
-                          color: formData.category === key ? meta.accent : SUB,
-                          boxShadow: formData.category === key ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                          background: formData.category === key ? (isDark ? "#2C3040" : "#fff") : "transparent",
+                          color: formData.category === key ? meta.accent : subColor,
                         }}
                       >
                         {meta.label}
@@ -472,27 +496,27 @@
 
                 <form onSubmit={submitForm} className="flex flex-col gap-3">
                   <SectionLabel text="📝 Detalii" />
-                  <Field label="🏷️ Nume *" value={formData.name} onChange={(v) => setFormData((f) => ({ ...f, name: v }))} placeholder="ex: BMW 430i / Iphone 14 PRO" />
-                  <Field label="🏭 Marcă" value={formData.brand} onChange={(v) => setFormData((f) => ({ ...f, brand: v }))} />
-                  <Field label="📦 Model" value={formData.model} onChange={(v) => setFormData((f) => ({ ...f, model: v }))} />
-                  <Field label="📅 Dată cumpărare" type="date" value={formData.purchaseDate} onChange={(v) => setFormData((f) => ({ ...f, purchaseDate: v }))} />
-                  <Field label="💰 Preț achiziție (RON)" type="number" value={formData.purchasePrice} onChange={(v) => setFormData((f) => ({ ...f, purchasePrice: v }))} />
-                  <Field label="✅ Expiră garanția" type="date" value={formData.warrantyExpiry} onChange={(v) => setFormData((f) => ({ ...f, warrantyExpiry: v }))} />
-                  <Field label="🔢 Serie / VIN" value={formData.serial} onChange={(v) => setFormData((f) => ({ ...f, serial: v }))} />
+                  <Field label="🏷️ Nume *" value={formData.name} onChange={(v) => setFormData((f) => ({ ...f, name: v }))} placeholder="ex: Dacia Duster / Frigider Bosch" isDark={isDark} />
+                  <Field label="🏭 Marcă" value={formData.brand} onChange={(v) => setFormData((f) => ({ ...f, brand: v }))} isDark={isDark} />
+                  <Field label="📦 Model" value={formData.model} onChange={(v) => setFormData((f) => ({ ...f, model: v }))} isDark={isDark} />
+                  <Field label="📅 Dată cumpărare" type="date" value={formData.purchaseDate} onChange={(v) => setFormData((f) => ({ ...f, purchaseDate: v }))} isDark={isDark} />
+                  <Field label="💰 Preț achiziție (RON)" type="number" value={formData.purchasePrice} onChange={(v) => setFormData((f) => ({ ...f, purchasePrice: v }))} isDark={isDark} />
+                  <Field label="✅ Expiră garanția" type="date" value={formData.warrantyExpiry} onChange={(v) => setFormData((f) => ({ ...f, warrantyExpiry: v }))} isDark={isDark} />
+                  <Field label="🔢 Serie / VIN" value={formData.serial} onChange={(v) => setFormData((f) => ({ ...f, serial: v }))} isDark={isDark} />
 
                   {formData.category === "car" && (
                     <>
                       <SectionLabel text="📄 Documente auto" />
-                      <Field label="🔍 Expiră ITP" type="date" value={formData.itpExpiry} onChange={(v) => setFormData((f) => ({ ...f, itpExpiry: v }))} />
-                      <Field label="🛡️ Expiră RCA" type="date" value={formData.insuranceExpiry} onChange={(v) => setFormData((f) => ({ ...f, insuranceExpiry: v }))} />
-                      <Field label="🎫 Expiră rovinietă" type="date" value={formData.vignetteExpiry} onChange={(v) => setFormData((f) => ({ ...f, vignetteExpiry: v }))} />
+                      <Field label="🔍 Expiră ITP" type="date" value={formData.itpExpiry} onChange={(v) => setFormData((f) => ({ ...f, itpExpiry: v }))} isDark={isDark} />
+                      <Field label="🛡️ Expiră RCA" type="date" value={formData.insuranceExpiry} onChange={(v) => setFormData((f) => ({ ...f, insuranceExpiry: v }))} isDark={isDark} />
+                      <Field label="🎫 Expiră rovinietă" type="date" value={formData.vignetteExpiry} onChange={(v) => setFormData((f) => ({ ...f, vignetteExpiry: v }))} isDark={isDark} />
 
                       <SectionLabel text="🛢️ Schimb de ulei" />
-                      <Field label="📅 Data ultimului schimb" type="date" value={formData.oilLastDate} onChange={(v) => setFormData((f) => ({ ...f, oilLastDate: v }))} />
-                      <Field label="🛞 Km la ultimul schimb" type="number" value={formData.oilLastKm} onChange={(v) => setFormData((f) => ({ ...f, oilLastKm: v }))} />
-                      <Field label="📏 Interval (km)" type="number" value={formData.oilIntervalKm} onChange={(v) => setFormData((f) => ({ ...f, oilIntervalKm: v }))} />
-                      <Field label="🗓️ Interval (luni)" type="number" value={formData.oilIntervalMonths} onChange={(v) => setFormData((f) => ({ ...f, oilIntervalMonths: v }))} />
-                      <Field label="🛞 Kilometraj curent" type="number" value={formData.currentKm} onChange={(v) => setFormData((f) => ({ ...f, currentKm: v }))} />
+                      <Field label="📅 Data ultimului schimb" type="date" value={formData.oilLastDate} onChange={(v) => setFormData((f) => ({ ...f, oilLastDate: v }))} isDark={isDark} />
+                      <Field label="🛞 Km la ultimul schimb" type="number" value={formData.oilLastKm} onChange={(v) => setFormData((f) => ({ ...f, oilLastKm: v }))} isDark={isDark} />
+                      <Field label="📏 Interval (km)" type="number" value={formData.oilIntervalKm} onChange={(v) => setFormData((f) => ({ ...f, oilIntervalKm: v }))} isDark={isDark} />
+                      <Field label="🗓️ Interval (luni)" type="number" value={formData.oilIntervalMonths} onChange={(v) => setFormData((f) => ({ ...f, oilIntervalMonths: v }))} isDark={isDark} />
+                      <Field label="🛞 Kilometraj curent" type="number" value={formData.currentKm} onChange={(v) => setFormData((f) => ({ ...f, currentKm: v }))} isDark={isDark} />
                     </>
                   )}
 
@@ -503,14 +527,14 @@
                       onChange={(e) => setFormData((f) => ({ ...f, notes: e.target.value }))}
                       rows={3}
                       className="w-full rounded-xl px-3 py-2"
-                      style={{ background: "rgba(118,118,128,0.10)", color: INK, fontSize: 14, border: "none" }}
+                      style={{ background: inputBg, color: textColor, fontSize: 14, border: "none" }}
                       placeholder="📖 ex: link manual, cod eroare frecvent, contact service..."
                     />
                   </div>
                   <button
                     type="submit"
-                    className="rounded-xl py-3 mt-2"
-                    style={{ background: BLUE, color: "#fff", fontWeight: 600, fontSize: 15 }}
+                    className="rounded-xl py-3 mt-2 font-semibold transition-all active:scale-95"
+                    style={{ background: BLUE, color: "#fff", fontSize: 15 }}
                   >
                     {editingId ? "💾 Salvează modificările" : "➕ Adaugă în registru"}
                   </button>
@@ -527,11 +551,11 @@
                 ? Number(selected.oilLastKm) + Number(selected.oilIntervalKm) - Number(selected.currentKm)
                 : null;
             return (
-              <div className="fixed inset-0 flex flex-col justify-end z-30" style={{ background: "rgba(0,0,0,0.35)" }}>
+              <div className="fixed inset-0 flex flex-col justify-end z-30" style={{ background: "rgba(0,0,0,0.5)" }}>
                 <div
                   className="rounded-t-3xl px-5 pt-5 pb-8 flex flex-col gap-4"
                   style={{
-                    background: "rgba(255,255,255,0.92)",
+                    background: modalBg,
                     backdropFilter: "blur(24px)",
                     WebkitBackdropFilter: "blur(24px)",
                     maxHeight: "92vh",
@@ -540,8 +564,8 @@
                 >
                   <div className="flex items-center justify-between">
                     <button onClick={() => setSelectedId(null)} className="flex items-center gap-1">
-                      <span style={{ fontSize: 16, color: SUB }}>❮</span>
-                      <span style={{ fontSize: 13, color: SUB }}> înapoi</span>
+                      <span style={{ fontSize: 16, color: subColor }}>❮</span>
+                      <span style={{ fontSize: 13, color: subColor }}> înapoi</span>
                     </button>
                     <div className="flex gap-4">
                       <button onClick={() => openEditForm(selected)}>
@@ -556,45 +580,45 @@
                   <div className="flex items-center gap-3">
                     <div
                       className="rounded-2xl flex items-center justify-center flex-shrink-0"
-                      style={{ width: 52, height: 52, background: `${CAT[selected.category].accent}1F`, fontSize: 26 }}
+                      style={{ width: 52, height: 52, background: `${CAT[selected.category].accent}25`, fontSize: 26 }}
                     >
                       {CAT[selected.category].emoji}
                     </div>
                     <div>
-                      <h2 style={{ fontSize: 21, fontWeight: 700, color: INK }}>
+                      <h2 style={{ fontSize: 21, fontWeight: 700, color: textColor }}>
                         {selected.name}
                       </h2>
-                      <p style={{ fontSize: 12, color: SUB, marginTop: 2 }}>
+                      <p style={{ fontSize: 12, color: subColor, marginTop: 2 }}>
                         {[selected.brand, selected.model].filter(Boolean).join(" · ") || "🏷️ fără detalii"}
                       </p>
                     </div>
                   </div>
 
                   {/* Purchase info */}
-                  <div className="rounded-2xl px-4" style={{ background: "rgba(118,118,128,0.08)" }}>
-                    <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: "1px solid rgba(60,60,67,0.08)" }}>
+                  <div className="rounded-2xl px-4" style={{ background: boxBg }}>
+                    <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(60,60,67,0.08)"}` }}>
                       <span style={{ fontSize: 16 }}>📅</span>
                       <div className="flex-1">
-                        <p style={{ fontSize: 12, color: SUB }}>Data cumpărării</p>
-                        <p style={{ fontSize: 14, color: INK, fontWeight: 500 }}>{formatDate(selected.purchaseDate)}</p>
+                        <p style={{ fontSize: 12, color: subColor }}>Data cumpărării</p>
+                        <p style={{ fontSize: 14, color: textColor, fontWeight: 500 }}>{formatDate(selected.purchaseDate)}</p>
                       </div>
                     </div>
                     {formatPrice(selected.purchasePrice) && (
-                      <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: "1px solid rgba(60,60,67,0.08)" }}>
+                      <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(60,60,67,0.08)"}` }}>
                         <span style={{ fontSize: 16 }}>💰</span>
                         <div className="flex-1">
-                          <p style={{ fontSize: 12, color: SUB }}>Preț achiziție</p>
-                          <p style={{ fontSize: 14, color: INK, fontWeight: 500 }}>{formatPrice(selected.purchasePrice)}</p>
+                          <p style={{ fontSize: 12, color: subColor }}>Preț achiziție</p>
+                          <p style={{ fontSize: 14, color: textColor, fontWeight: 500 }}>{formatPrice(selected.purchasePrice)}</p>
                         </div>
                       </div>
                     )}
-                    <ExpiryRow emoji="🛡️" label="✅ Garanție" date={selected.warrantyExpiry} />
+                    <ExpiryRow emoji="🛡️" label="✅ Garanție" date={selected.warrantyExpiry} isDark={isDark} />
                     {selected.serial && (
                       <div className="flex items-center gap-3 py-2.5">
                         <span style={{ fontSize: 16 }}>🔢</span>
                         <div className="flex-1">
-                          <p style={{ fontSize: 12, color: SUB }}>Serie / VIN</p>
-                          <p style={{ fontSize: 13, color: INK, fontFamily: "monospace" }}>{selected.serial}</p>
+                          <p style={{ fontSize: 12, color: subColor }}>Serie / VIN</p>
+                          <p style={{ fontSize: 13, color: textColor, fontFamily: "monospace" }}>{selected.serial}</p>
                         </div>
                       </div>
                     )}
@@ -604,25 +628,26 @@
                     <>
                       <div>
                         <p style={{ fontSize: 12, fontWeight: 600, color: BLUE, marginBottom: 6, letterSpacing: "0.04em" }}>📄 DOCUMENTE AUTO</p>
-                        <div className="rounded-2xl px-4" style={{ background: "rgba(118,118,128,0.08)" }}>
-                          <ExpiryRow emoji="🔍" label="🔍 ITP" date={selected.itpExpiry} />
-                          <ExpiryRow emoji="🛡️" label="🛡️ Asigurare RCA" date={selected.insuranceExpiry} />
-                          <ExpiryRow emoji="🎫" label="🎫 Rovinietă" date={selected.vignetteExpiry} />
+                        <div className="rounded-2xl px-4" style={{ background: boxBg }}>
+                          <ExpiryRow emoji="🔍" label="🔍 ITP" date={selected.itpExpiry} isDark={isDark} />
+                          <ExpiryRow emoji="🛡️" label="🛡️ Asigurare RCA" date={selected.insuranceExpiry} isDark={isDark} />
+                          <ExpiryRow emoji="🎫" label="🎫 Rovinietă" date={selected.vignetteExpiry} isDark={isDark} />
                         </div>
                       </div>
 
                       <div>
                         <p style={{ fontSize: 12, fontWeight: 600, color: BLUE, marginBottom: 6, letterSpacing: "0.04em" }}>🛢️ SCHIMB DE ULEI</p>
-                        <div className="rounded-2xl px-4 py-1" style={{ background: "rgba(118,118,128,0.08)" }}>
+                        <div className="rounded-2xl px-4 py-1" style={{ background: boxBg }}>
                           <ExpiryRow
                             emoji="🛢️"
                             label="🛢️ Următorul schimb"
                             date={nextOil}
                             extra={selected.oilLastKm ? `ultimul la ${Number(selected.oilLastKm).toLocaleString("ro-RO")} km` : null}
+                            isDark={isDark}
                           />
                           {kmRemaining !== null && (
                             <div className="py-2.5">
-                              <p style={{ fontSize: 12, color: SUB }}>
+                              <p style={{ fontSize: 12, color: subColor }}>
                                 🛞 Km rămași estimativ până la schimb:{" "}
                                 <span style={{ fontWeight: 600, color: kmRemaining < 500 ? DANGER : kmRemaining < 1500 ? WARN : GOOD }}>
                                   {kmRemaining.toLocaleString("ro-RO")} km {kmRemaining < 500 ? "🔴" : kmRemaining < 1500 ? "🟡" : "🟢"}
@@ -637,20 +662,20 @@
                               onChange={(e) => setKmDraft(e.target.value)}
                               placeholder="🛞 km curent"
                               className="flex-1 rounded-lg px-3 py-2"
-                              style={{ background: "#fff", fontSize: 13, border: "1px solid rgba(60,60,67,0.12)", color: INK }}
+                              style={{ background: inputBg, fontSize: 13, border: "none", color: textColor }}
                             />
                             <button
                               onClick={() => saveCurrentKm(selected.id)}
                               className="rounded-lg px-3"
-                              style={{ background: "rgba(0,122,255,0.12)", color: BLUE, fontSize: 13, fontWeight: 600 }}
+                              style={{ background: "rgba(0,122,255,0.18)", color: BLUE, fontSize: 13, fontWeight: 600 }}
                             >
                               🔄 Actualizează
                             </button>
                           </div>
                           <button
                             onClick={() => markOilChanged(selected.id)}
-                            className="w-full rounded-lg py-2 mb-2"
-                            style={{ background: BLUE, color: "#fff", fontSize: 13, fontWeight: 600 }}
+                            className="w-full rounded-lg py-2 mb-2 font-semibold"
+                            style={{ background: BLUE, color: "#fff", fontSize: 13 }}
                           >
                             ✅ Am schimbat uleiul azi
                           </button>
@@ -662,8 +687,8 @@
                   {selected.notes && (
                     <div>
                       <p style={{ fontSize: 12, fontWeight: 600, color: BLUE, marginBottom: 6, letterSpacing: "0.04em" }}>🗒️ NOTE</p>
-                      <div className="rounded-2xl p-3" style={{ background: "rgba(118,118,128,0.08)" }}>
-                        <p style={{ fontSize: 13, color: INK, lineHeight: 1.5 }}>📖 {selected.notes}</p>
+                      <div className="rounded-2xl p-3" style={{ background: boxBg }}>
+                        <p style={{ fontSize: 13, color: textColor, lineHeight: 1.5 }}>📖 {selected.notes}</p>
                       </div>
                     </div>
                   )}
@@ -671,7 +696,7 @@
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <span style={{ fontSize: 15 }}>🔧</span>
-                      <h3 style={{ fontSize: 15, fontWeight: 700, color: INK }}>Istoric service</h3>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: textColor }}>Istoric service</h3>
                     </div>
 
                     <div className="flex gap-2 mb-3">
@@ -680,7 +705,7 @@
                         value={serviceDate}
                         onChange={(e) => setServiceDate(e.target.value)}
                         className="rounded-lg px-2 py-2"
-                        style={{ background: "#fff", fontSize: 12, border: "1px solid rgba(60,60,67,0.12)", color: INK }}
+                        style={{ background: inputBg, fontSize: 12, border: "none", color: textColor }}
                       />
                       <input
                         type="text"
@@ -688,7 +713,7 @@
                         onChange={(e) => setServiceDesc(e.target.value)}
                         placeholder="🔧 ex: schimb plăcuțe..."
                         className="flex-1 rounded-lg px-3 py-2"
-                        style={{ background: "#fff", fontSize: 13, border: "1px solid rgba(60,60,67,0.12)", color: INK }}
+                        style={{ background: inputBg, fontSize: 13, border: "none", color: textColor }}
                       />
                       <button
                         onClick={() => addServiceEntry(selected.id)}
@@ -700,14 +725,14 @@
                     </div>
 
                     {(!selected.serviceLog || selected.serviceLog.length === 0) ? (
-                      <p className="text-sm" style={{ color: FAINT }}>📭 Nicio intrare încă.</p>
+                      <p className="text-sm" style={{ color: subColor }}>📭 Nicio intrare încă.</p>
                     ) : (
                       <div className="flex flex-col gap-2">
                         {selected.serviceLog.map((entry) => (
-                          <div key={entry.id} className="flex items-start justify-between rounded-xl p-2.5" style={{ background: "rgba(118,118,128,0.08)" }}>
+                          <div key={entry.id} className="flex items-start justify-between rounded-xl p-2.5" style={{ background: boxBg }}>
                             <div>
                               <p style={{ fontSize: 11, color: BLUE, fontWeight: 600 }}>📅 {formatDate(entry.date)}</p>
-                              <p style={{ fontSize: 13, color: INK, marginTop: 2 }}>🔧 {entry.description}</p>
+                              <p style={{ fontSize: 13, color: textColor, marginTop: 2 }}>🔧 {entry.description}</p>
                             </div>
                             <button onClick={() => deleteServiceEntry(selected.id, entry.id)}>
                               <span style={{ fontSize: 14 }}>🗑️</span>
@@ -733,17 +758,22 @@
       );
     }
 
-    function Field({ label, value, onChange, type = "text", placeholder }) {
+    function Field({ label, value, onChange, type = "text", placeholder, isDark }) {
       return (
         <div className="w-full">
-          <label style={{ fontSize: 12, color: SUB }}>{label}</label>
+          <label style={{ fontSize: 12, color: isDark ? "#A1A1A6" : "#6E6E73" }}>{label}</label>
           <input
             type={type}
             value={value}
             placeholder={placeholder}
             onChange={(e) => onChange(e.target.value)}
             className="w-full rounded-xl px-3 py-2 mt-1"
-            style={{ background: "rgba(118,118,128,0.10)", color: INK, fontSize: 14, border: "none" }}
+            style={{
+              background: isDark ? "rgba(255,255,255,0.08)" : "rgba(118,118,128,0.10)",
+              color: isDark ? "#F2F2F7" : "#1C1C1E",
+              fontSize: 14,
+              border: "none",
+            }}
           />
         </div>
       );
