@@ -114,7 +114,6 @@
       return `✅ mai ai ${days} zile până expiră`;
     }
 
-    // Funcții simple de criptare bazate pe Base64 + Codificare pentru Seif
     function encryptData(text, password) {
       try {
         const str = JSON.stringify(text);
@@ -131,7 +130,7 @@
         const parts = decoded.split(":::");
         if (parts.length < 2) return null;
         const pass = parts[0];
-        if (pass !== password) return null; // parolă greșită
+        if (pass !== password) return null;
         return JSON.parse(parts.slice(1).join(":::"));
       } catch (e) {
         return null;
@@ -217,7 +216,7 @@
       const [kmDraft, setKmDraft] = useState("");
       const [isDark, setIsDark] = useState(false);
 
-      // Stări pentru Seif Secret Criptat
+      // Seif Secret Criptat
       const [vaultOpen, setVaultOpen] = useState(false);
       const [vaultUnlocked, setVaultUnlocked] = useState(false);
       const [vaultPassword, setVaultPassword] = useState("");
@@ -226,7 +225,11 @@
       const [vaultItems, setVaultItems] = useState([]);
       const [selectedVaultId, setSelectedVaultId] = useState(null);
 
-      // Gest triplu tap pe titlu
+      // Stări pentru schimbarea parolei din interior
+      const [showChangePass, setShowChangePass] = useState(false);
+      const [newPassInput, setNewPassInput] = useState("");
+      const [changePassMsg, setChangePassMsg] = useState("");
+
       const titleClicksRef = useRef(0);
       const titleTimerRef = useRef(null);
 
@@ -248,8 +251,12 @@
         const savedPass = localStorage.getItem("garage-vault-pass");
         setVaultPinInput("");
         setVaultError("");
+        setShowChangePass(false);
+        setNewPassInput("");
+        setChangePassMsg("");
+
         if (!savedPass) {
-          setVaultPassword(""); // Trebuie să seteze o parolă nouă
+          setVaultPassword("");
         } else {
           setVaultPassword(savedPass);
         }
@@ -261,7 +268,6 @@
         const savedPass = localStorage.getItem("garage-vault-pass");
         
         if (!savedPass) {
-          // Setare parolă nouă
           if (vaultPinInput.trim().length < 4) {
             setVaultError("Parola trebuie să aibă minim 4 caractere.");
             return;
@@ -271,7 +277,6 @@
           setVaultUnlocked(true);
           loadVaultContent(vaultPinInput.trim());
         } else {
-          // Verificare parolă existentă
           const cipher = localStorage.getItem("garage-vault-data");
           if (!cipher) {
             if (vaultPinInput.trim() === savedPass) {
@@ -310,24 +315,44 @@
         }
       }
 
+      function handleChangePassword(e) {
+        e.preventDefault();
+        if (newPassInput.trim().length < 4) {
+          setChangePassMsg("Noua parolă trebuie să aibă minim 4 caractere.");
+          return;
+        }
+        const updatedPass = newPassInput.trim();
+        localStorage.setItem("garage-vault-pass", updatedPass);
+        setVaultPassword(updatedPass);
+        
+        // Re-criptăm elementele din seif cu noua parolă
+        const cipher = encryptData(vaultItems, updatedPass);
+        if (cipher) {
+          localStorage.setItem("garage-vault-data", cipher);
+        }
+
+        setChangePassMsg("✅ Parola a fost schimbată cu succes!");
+        setNewPassInput("");
+        setTimeout(() => {
+          setShowChangePass(false);
+          setChangePassMsg("");
+        }, 1500);
+      }
+
       function moveToVault(item) {
-        // Scoate din lista normală
         const updatedNormal = items.filter((it) => it.id !== item.id);
         persist(updatedNormal);
         setSelectedId(null);
 
-        // Adaugă în seif
         const updatedVault = [item, ...vaultItems];
         persistVault(updatedVault);
       }
 
       function moveFromVault(item) {
-        // Scoate din seif
         const updatedVault = vaultItems.filter((it) => it.id !== item.id);
         persistVault(updatedVault);
         setSelectedVaultId(null);
 
-        // Adaugă în lista normală
         const updatedNormal = [item, ...items];
         persist(updatedNormal);
       }
@@ -507,7 +532,6 @@
                 <p style={{ color: BLUE, fontSize: 11, fontWeight: 600, letterSpacing: "0.06em" }}>
                   📋 REGISTRU PERSONAL <span style={{ color: CYAN, fontWeight: 500, marginLeft: 4 }}>by kev</span>
                 </p>
-                {/* Zonă cu click triplu ascuns pentru Seif */}
                 <h1
                   onClick={handleTitleTap}
                   className="cursor-pointer select-none"
@@ -560,7 +584,7 @@
               ))}
             </div>
 
-            {/* Sortare Selector */}
+            {/* Sortare */}
             <div className="flex items-center justify-between mt-3 px-1">
               <p style={{ fontSize: 12, color: subColor, fontWeight: 500 }}>
                 {filtered.length} {filtered.length === 1 ? "element" : "elemente"}
@@ -1095,9 +1119,45 @@
                   </form>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    <p style={{ fontSize: 12, color: GOOD, fontWeight: 600 }}>
-                      ✅ Seif deblocat cu succes ({vaultItems.length} {vaultItems.length === 1 ? "element ascuns" : "elemente ascunse"})
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p style={{ fontSize: 12, color: GOOD, fontWeight: 600 }}>
+                        ✅ Seif deblocat ({vaultItems.length} {vaultItems.length === 1 ? "element" : "elemente"})
+                      </p>
+                      <button
+                        onClick={() => { setShowChangePass(!showChangePass); setChangePassMsg(""); }}
+                        className="px-2.5 py-1 rounded-lg"
+                        style={{ background: inputBg, color: textColor, fontSize: 12, fontWeight: 600 }}
+                      >
+                        🔑 {showChangePass ? "Anulează" : "Schimbă PIN"}
+                      </button>
+                    </div>
+
+                    {/* Panou schimbare parolă din interior */}
+                    {showChangePass && (
+                      <form onSubmit={handleChangePassword} className="p-3 rounded-2xl flex flex-col gap-2" style={{ background: boxBg, border: cardBorder }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: textColor }}>Setează o nouă parolă PIN:</p>
+                        <input
+                          type="password"
+                          value={newPassInput}
+                          onChange={(e) => setNewPassInput(e.target.value)}
+                          placeholder="Noua parolă PIN (min. 4 caractere)"
+                          className="w-full rounded-xl px-3 py-2"
+                          style={{ background: inputBg, color: textColor, fontSize: 14, border: "none" }}
+                        />
+                        {changePassMsg && (
+                          <p style={{ fontSize: 12, color: changePassMsg.startsWith("✅") ? GOOD : DANGER, fontWeight: 600 }}>
+                            {changePassMsg}
+                          </p>
+                        )}
+                        <button
+                          type="submit"
+                          className="rounded-xl py-2 font-semibold"
+                          style={{ background: BLUE, color: "#fff", fontSize: 13 }}
+                        >
+                          💾 Salvează noua parolă
+                        </button>
+                      </form>
+                    )}
 
                     {vaultItems.length === 0 ? (
                       <div className="text-center py-10">
