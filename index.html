@@ -5,14 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Garaj &amp; Casă</title>
   
-  <!-- Icon PNG HD Nativ iOS (Bypasses SVG Bugs) -->
+  <!-- Culoare bara de stare iOS (Dynamic Island) -->
+  <meta id="theme-color-meta" name="theme-color" content="#E7F1FF" />
+
+  <!-- Icon PNG HD Nativ iOS -->
   <link rel="apple-touch-icon" sizes="180x180" href="https://img.icons8.com/color/512/garage--v1.png?v=2" />
   <link rel="icon" type="image/png" href="https://img.icons8.com/color/512/garage--v1.png?v=2" />
   
-  <!-- Setari iOS -->
+  <!-- Setări iOS App -->
   <meta name="apple-mobile-web-app-title" content="Garaj&amp;Casă" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
   <!-- Tailwind CSS & React CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -181,12 +184,17 @@
             setItems(parsed.items || []);
           }
           const savedTheme = localStorage.getItem("garage-theme");
-          if (savedTheme === "dark") {
-            setIsDark(true);
+          const shouldBeDark = savedTheme === "dark";
+          setIsDark(shouldBeDark);
+
+          // Actualizează bara Dynamic Island la încărcare
+          const meta = document.getElementById("theme-color-meta");
+          if (meta) {
+            meta.setAttribute("content", shouldBeDark ? "#12141C" : "#E7F1FF");
           }
         } catch (e) {
           console.error(e);
-        } finally {
+        } fontally {
           setLoading(false);
         }
       }, []);
@@ -195,6 +203,12 @@
         const nextState = !isDark;
         setIsDark(nextState);
         localStorage.setItem("garage-theme", nextState ? "dark" : "light");
+
+        // Schimbă culoarea zonei de sus la apăsare
+        const meta = document.getElementById("theme-color-meta");
+        if (meta) {
+          meta.setAttribute("content", nextState ? "#12141C" : "#E7F1FF");
+        }
       }
 
       function persist(newItems) {
@@ -278,11 +292,11 @@
       const filtered = items.filter((it) => tab === "all" || it.category === tab);
       const selected = items.find((it) => it.id === selectedId);
 
-      // Theme Dynamic Styles
+      // Stiluri dinamice de temă
       const bgGrad = isDark 
         ? "linear-gradient(160deg, #12141C 0%, #1A1D27 45%, #0F1015 100%)"
         : "linear-gradient(160deg, #E7F1FF 0%, #F3F7FC 45%, #ECEFF6 100%)";
-      const headerBg = isDark ? "rgba(26,29,39,0.85)" : "rgba(247,249,252,0.72)";
+      const headerBg = isDark ? "rgba(18,20,28,0.85)" : "rgba(231,241,255,0.85)";
       const textColor = isDark ? "#F2F2F7" : "#1C1C1E";
       const subColor = isDark ? "#A1A1A6" : "#6E6E73";
       const cardBg = isDark ? "rgba(30, 34, 48, 0.65)" : "rgba(255,255,255,0.62)";
@@ -323,7 +337,7 @@
                 </h1>
               </div>
               
-              {/* Theme Switcher Button */}
+              {/* Buton Schimbare Temă */}
               <button
                 onClick={toggleTheme}
                 className="rounded-full flex items-center justify-center transition-transform active:scale-95"
@@ -366,7 +380,7 @@
             </div>
           </div>
 
-          {/* Content */}
+          {/* Conținut */}
           <div className="flex-1 px-5 pt-4 pb-28 relative z-10" style={{ overflowY: "auto" }}>
             {saveError && (
               <div className="mb-3 px-3 py-2 rounded-xl text-sm flex items-center gap-2" style={{ background: "rgba(255,59,48,0.12)", color: "#FF453A" }}>
@@ -452,7 +466,7 @@
             <span style={{ fontSize: 24, color: "#fff" }}>➕</span>
           </button>
 
-          {/* Form Modal */}
+          {/* Modal Formular */}
           {showForm && (
             <div className="fixed inset-0 flex flex-col justify-end z-30" style={{ background: "rgba(0,0,0,0.5)" }}>
               <div
@@ -543,7 +557,7 @@
             </div>
           )}
 
-          {/* Details Modal */}
+          {/* Modal Detalii */}
           {selected && (() => {
             const nextOil = selected.category === "car" ? addMonths(selected.oilLastDate, selected.oilIntervalMonths) : null;
             const kmRemaining =
@@ -594,7 +608,6 @@
                     </div>
                   </div>
 
-                  {/* Purchase info */}
                   <div className="rounded-2xl px-4" style={{ background: boxBg }}>
                     <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(60,60,67,0.08)"}` }}>
                       <span style={{ fontSize: 16 }}>📅</span>
