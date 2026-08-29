@@ -315,6 +315,21 @@
         }
       }
 
+      // Funcție pentru resetare totală (șterge PIN-ul și tot ce e în seif)
+      function handleHardResetVault() {
+        const confirmed = window.confirm("Ești sigur că vrei să resetezi seiful? Vei pierde parola veche și TOATE obiectele ascunse din interior!");
+        if (confirmed) {
+          localStorage.removeItem("garage-vault-pass");
+          localStorage.removeItem("garage-vault-data");
+          setVaultPassword("");
+          setVaultPinInput("");
+          setVaultItems([]);
+          setVaultUnlocked(false);
+          setVaultOpen(false);
+          alert("Seiful a fost resetat complet!");
+        }
+      }
+
       function handleChangePassword(e) {
         e.preventDefault();
         if (newPassInput.trim().length < 4) {
@@ -325,7 +340,6 @@
         localStorage.setItem("garage-vault-pass", updatedPass);
         setVaultPassword(updatedPass);
         
-        // Re-criptăm elementele din seif cu noua parolă
         const cipher = encryptData(vaultItems, updatedPass);
         if (cipher) {
           localStorage.setItem("garage-vault-data", cipher);
@@ -1116,6 +1130,18 @@
                     >
                       🔓 Deblochează Seiful
                     </button>
+
+                    {/* Buton de Resetare Totală (dacă s-a uitat PIN-ul) */}
+                    {localStorage.getItem("garage-vault-pass") && (
+                      <button
+                        type="button"
+                        onClick={handleHardResetVault}
+                        className="rounded-xl py-2 font-medium transition-all active:scale-95 mt-4"
+                        style={{ background: "rgba(255,59,48,0.12)", color: DANGER, fontSize: 13 }}
+                      >
+                        🗑️ Ai uitat PIN-ul? Resetează tot seiful
+                      </button>
+                    )}
                   </form>
                 ) : (
                   <div className="flex flex-col gap-3">
