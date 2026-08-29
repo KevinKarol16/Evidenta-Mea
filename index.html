@@ -35,6 +35,8 @@
     const WARN = "#FF9500";
     const DANGER = "#FF3B30";
 
+    const EMOJI_PRESETS = ["🚗", "🏍️", "🚲", "🚜", "🔌", "📺", "💻", "🧺", "❄️", "🏠", "🧰", "📱"];
+
     const CAT = {
       car: { label: "🚗 Mașină", accent: BLUE, emoji: "🚗" },
       appliance: { label: "🔌 Electrocasnic", accent: CYAN, emoji: "🔌" },
@@ -48,10 +50,10 @@
     }
 
     const CAR_FIELDS = [
-      { key: "warrantyExpiry", label: "✅ Garanție", short: "✅ Garanție", emoji: "🛡️" },
-      { key: "itpExpiry", label: "🔍 ITP", short: "🔍 ITP", emoji: "🔍" },
-      { key: "insuranceExpiry", label: "🛡️ Asigurare RCA", short: "🛡️ RCA", emoji: "🛡️" },
-      { key: "vignetteExpiry", label: "🎫 Rovinietă", short: "🎫 Vinietă", emoji: "🎫" },
+      { key: "warrantyExpiry", label: "✅ Garanție", short: "✅ Garanție" },
+      { key: "itpExpiry", label: "🔍 ITP", short: "🔍 ITP" },
+      { key: "insuranceExpiry", label: "🛡️ Asigurare RCA", short: "🛡️ RCA" },
+      { key: "vignetteExpiry", label: "🎫 Rovinietă", short: "🎫 Vinietă" },
     ];
 
     function uid() {
@@ -64,6 +66,23 @@
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       return Math.round((target - now) / 86400000);
+    }
+
+    function getEarliestExpiry(item) {
+      const dates = [];
+      if (item.warrantyExpiry) dates.push(daysUntil(item.warrantyExpiry));
+      if (item.category === "car") {
+        if (item.itpExpiry) dates.push(daysUntil(item.itpExpiry));
+        if (item.insuranceExpiry) dates.push(daysUntil(item.insuranceExpiry));
+        if (item.vignetteExpiry) dates.push(daysUntil(item.vignetteExpiry));
+        if (item.oilLastDate && item.oilIntervalMonths) {
+          const nextOil = addMonths(item.oilLastDate, item.oilIntervalMonths);
+          if (nextOil) dates.push(daysUntil(nextOil));
+        }
+      }
+      const validDates = dates.filter((d) => d !== null);
+      if (validDates.length === 0) return 99999;
+      return Math.min(...validDates);
     }
 
     function addMonths(dateStr, months) {
@@ -144,6 +163,7 @@
 
     const emptyForm = {
       category: "car",
+      customEmoji: "",
       name: "",
       brand: "",
       model: "",
@@ -167,6 +187,7 @@
       const [loading, setLoading] = useState(true);
       const [saveError, setSaveError] = useState(null);
       const [tab, setTab] = useState("all");
+      const [sortBy, setSortBy] = useState("manual"); // 'manual', 'expiry', 'name'
       const [showForm, setShowForm] = useState(false);
       const [editingId, setEditingId] = useState(null);
       const [formData, setFormData] = useState(emptyForm);
@@ -219,8 +240,22 @@
         }
       }
 
+      function moveItem(id, direction) {
+        const index = items.findIndex((it) => it.id === id);
+        if (index === -1) return;
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= items.length) return;
+
+        const updated = [...items];
+        const temp = updated[index];
+        updated[index] = updated[targetIndex];
+        updated[targetIndex] = temp;
+        persist(updated);
+      }
+
       function openAddForm(category) {
-        setFormData({ ...emptyForm, category: category === "appliance" ? "appliance" : "car" });
+        const defaultEmoji = category === "appliance" ? "🔌" : "🚗";
+        setFormData({ ...emptyForm, category: category === "appliance" ? "appliance" : "car", customEmoji: defaultEmoji });
         setEditingId(null);
         setShowForm(true);
       }
@@ -287,7 +322,16 @@
         persist(updated);
       }
 
-      const filtered = items.filter((it) => tab === "all" || it.category === tab);
+      // Filtrare
+      let filtered = items.filter((it) => tab === "all" || it.category === tab);
+
+      // Sortare
+      if (sortBy === "expiry") {
+        filtered = [...filtered].sort((a, b) => getEarliestExpiry(a) - getEarliestExpiry(b));
+      } else if (sortBy === "name") {
+        filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name, "ro"));
+      }
+
       const selected = items.find((it) => it.id === selectedId);
 
       const bgGrad = isDark 
@@ -310,8 +354,8 @@
           <style>{`
             * { box-sizing: border-box; }
             ::-webkit-scrollbar { display: none; }
-            input, textarea { font-family: inherit; }
-            input:focus, textarea:focus { outline: none; }
+            input, textarea, select { font-family: inherit; }
+            input:focus, textarea:focus, select:focus { outline: none; }
           `}</style>
 
           {/* Header */}
@@ -349,6 +393,7 @@
               </button>
             </div>
 
+            {/* Categorii */}
             <div
               className="flex mt-4 p-1 rounded-full"
               style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(118,118,128,0.12)" }}
@@ -374,10 +419,36 @@
                 </button>
               ))}
             </div>
+
+            {/* Sortare Selector */}
+            <div className="flex items-center justify-between mt-3 px-1">
+              <p style={{ fontSize: 12, color: subColor, fontWeight: 500 }}>
+                {filtered.length} {filtered.length === 1 ? "element" : "elemente"}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <span style={{ fontSize: 12, color: subColor }}>🔀 Sortare:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="rounded-lg px-2 py-1"
+                  style={{
+                    background: inputBg,
+                    color: textColor,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: "none",
+                  }}
+                >
+                  <option value="manual">⚙️ Ordine manuală</option>
+                  <option value="expiry">⏳ Expirare apropiată</option>
+                  <option value="name">🔤 Nume (A-Z)</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Conținut */}
-          <div className="flex-1 px-5 pt-4 pb-28 relative z-10" style={{ overflowY: "auto" }}>
+          <div className="flex-1 px-5 pt-3 pb-28 relative z-10" style={{ overflowY: "auto" }}>
             {saveError && (
               <div className="mb-3 px-3 py-2 rounded-xl text-sm flex items-center gap-2" style={{ background: "rgba(255,59,48,0.12)", color: "#FF453A" }}>
                 ⚠️ {saveError}
@@ -398,7 +469,9 @@
               <div className="flex flex-col gap-3">
                 {filtered.map((it) => {
                   const meta = CAT[it.category];
+                  const displayEmoji = it.customEmoji || meta.emoji;
                   const nextOil = it.category === "car" ? addMonths(it.oilLastDate, it.oilIntervalMonths) : null;
+                  
                   return (
                     <div
                       key={it.id}
@@ -415,9 +488,9 @@
                       <div className="flex items-center gap-3">
                         <div
                           className="rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ width: 44, height: 44, background: `${meta.accent}25`, fontSize: 22 }}
+                          style={{ width: 44, height: 44, background: `${meta.accent}25`, fontSize: 24 }}
                         >
-                          {meta.emoji}
+                          {displayEmoji}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="truncate" style={{ color: textColor, fontSize: 16, fontWeight: 600 }}>
@@ -427,6 +500,7 @@
                             {[it.brand, it.model].filter(Boolean).join(" · ") || "🏷️ fără detalii"}
                           </p>
                         </div>
+
                         <span style={{ fontSize: 18, color: subColor }}>❯</span>
                       </div>
 
@@ -489,7 +563,10 @@
                     {Object.entries(CAT).map(([key, meta]) => (
                       <button
                         key={key}
-                        onClick={() => setFormData((f) => ({ ...f, category: key }))}
+                        onClick={() => {
+                          const def = key === "appliance" ? "🔌" : "🚗";
+                          setFormData((f) => ({ ...f, category: key, customEmoji: def }));
+                        }}
                         className="flex-1 py-2 rounded-lg transition-all"
                         style={{
                           fontSize: 13,
@@ -505,7 +582,49 @@
                 )}
 
                 <form onSubmit={submitForm} className="flex flex-col gap-3">
-                  <SectionLabel text="📝 Detalii" />
+                  <SectionLabel text="🎨 Pictogramă &amp; Nume" />
+                  
+                  {/* Selector Emoji */}
+                  <div>
+                    <label style={{ fontSize: 12, color: subColor }}>Alege sau scrie un Emoji custom:</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="text"
+                        value={formData.customEmoji}
+                        maxLength={2}
+                        onChange={(e) => setFormData((f) => ({ ...f, customEmoji: e.target.value }))}
+                        className="rounded-xl text-center"
+                        style={{
+                          width: 48,
+                          height: 48,
+                          fontSize: 22,
+                          background: inputBg,
+                          border: "none",
+                          color: textColor,
+                        }}
+                      />
+                      <div className="flex-1 flex gap-1.5 overflow-x-auto py-1">
+                        {EMOJI_PRESETS.map((em) => (
+                          <button
+                            key={em}
+                            type="button"
+                            onClick={() => setFormData((f) => ({ ...f, customEmoji: em }))}
+                            className="rounded-lg flex-shrink-0 flex items-center justify-center"
+                            style={{
+                              width: 36,
+                              height: 36,
+                              fontSize: 18,
+                              background: formData.customEmoji === em ? `${BLUE}33` : boxBg,
+                              border: formData.customEmoji === em ? `1px solid ${BLUE}` : "none",
+                            }}
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
                   <Field label="🏷️ Nume *" value={formData.name} onChange={(v) => setFormData((f) => ({ ...f, name: v }))} placeholder="ex: Dacia Duster / Frigider Bosch" isDark={isDark} />
                   <Field label="🏭 Marcă" value={formData.brand} onChange={(v) => setFormData((f) => ({ ...f, brand: v }))} isDark={isDark} />
                   <Field label="📦 Model" value={formData.model} onChange={(v) => setFormData((f) => ({ ...f, model: v }))} isDark={isDark} />
@@ -555,11 +674,16 @@
 
           {/* Modal Detalii */}
           {selected && (() => {
+            const meta = CAT[selected.category];
+            const displayEmoji = selected.customEmoji || meta.emoji;
             const nextOil = selected.category === "car" ? addMonths(selected.oilLastDate, selected.oilIntervalMonths) : null;
             const kmRemaining =
               selected.oilLastKm !== "" && selected.oilIntervalKm !== "" && selected.currentKm
                 ? Number(selected.oilLastKm) + Number(selected.oilIntervalKm) - Number(selected.currentKm)
                 : null;
+            
+            const selectedIndex = items.findIndex((it) => it.id === selected.id);
+
             return (
               <div className="fixed inset-0 flex flex-col justify-end z-30" style={{ background: "rgba(0,0,0,0.5)" }}>
                 <div
@@ -577,7 +701,30 @@
                       <span style={{ fontSize: 16, color: subColor }}>❮</span>
                       <span style={{ fontSize: 13, color: subColor }}> înapoi</span>
                     </button>
-                    <div className="flex gap-4">
+                    
+                    <div className="flex items-center gap-3">
+                      {/* Butoane Reordonare Sus/Jos */}
+                      <div className="flex items-center gap-1 bg-black/10 rounded-lg p-0.5">
+                        <button
+                          disabled={selectedIndex <= 0}
+                          onClick={() => moveItem(selected.id, "up")}
+                          className="px-2 py-1 rounded opacity-90 disabled:opacity-20"
+                          style={{ fontSize: 14 }}
+                          title="Mută mai sus"
+                        >
+                          ⬆️
+                        </button>
+                        <button
+                          disabled={selectedIndex >= items.length - 1}
+                          onClick={() => moveItem(selected.id, "down")}
+                          className="px-2 py-1 rounded opacity-90 disabled:opacity-20"
+                          style={{ fontSize: 14 }}
+                          title="Mută mai jos"
+                        >
+                          ⬇️
+                        </button>
+                      </div>
+
                       <button onClick={() => openEditForm(selected)}>
                         <span style={{ fontSize: 18 }}>✏️</span>
                       </button>
@@ -590,9 +737,9 @@
                   <div className="flex items-center gap-3">
                     <div
                       className="rounded-2xl flex items-center justify-center flex-shrink-0"
-                      style={{ width: 52, height: 52, background: `${CAT[selected.category].accent}25`, fontSize: 26 }}
+                      style={{ width: 52, height: 52, background: `${meta.accent}25`, fontSize: 28 }}
                     >
-                      {CAT[selected.category].emoji}
+                      {displayEmoji}
                     </div>
                     <div>
                       <h2 style={{ fontSize: 21, fontWeight: 700, color: textColor }}>
